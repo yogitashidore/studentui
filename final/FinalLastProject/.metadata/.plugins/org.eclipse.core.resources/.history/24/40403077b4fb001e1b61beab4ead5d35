@@ -1,0 +1,45 @@
+# Stage 1: Build the Java application using Maven
+FROM maven:3.8-openjdk-17-slim AS build
+
+# Set the working directory inside the container
+WORKDIR /student-management-system-springboot-main
+
+# Copy the Maven project file
+COPY pom.xml .
+
+# Download dependencies and build application
+RUN mvn dependency:go-offline
+COPY src src
+RUN mvn package -DskipTests
+
+# Stage 2: Set up the MySQL database
+FROM mysql:latest AS mysql_setup
+
+# Set the MySQL root password
+ENV MYSQL_ROOT_PASSWORD=@@@Root87
+
+# Set up the database and user
+ENV MYSQL_DATABASE=sms
+ENV MYSQL_USER=root
+ENV MYSQL_PASSWORD=@@@Root87
+
+# Copy the database schema script into the container
+COPY ./database/schema.sql /docker-entrypoint-initdb.d/
+
+# Expose the port for MySQL
+EXPOSE 3306
+
+# Stage 3: Run the Spring Boot application
+FROM openjdk:17-slim
+
+# Set the working directory to /student-management-system-springboot-main
+WORKDIR /student-management-system-springboot-main
+
+# Copy the built JAR file from the Maven build stage
+COPY --from=build /student-management-system-springboot-main/target/studentrecorddatabase-0.0.1-SNAPSHOT.jar .
+
+# Expose port 8089 for the Spring Boot application
+EXPOSE 8089
+
+# Run the Spring Boot application when the container launches
+CMD ["java", "-jar", "studentrecorddatabase-0.0.1-SNAPSHOT.jar"]
